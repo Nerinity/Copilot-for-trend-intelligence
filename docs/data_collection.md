@@ -113,6 +113,10 @@ Currently implemented:
 
 - Hacker News public Algolia API
 - Google News RSS search
+- Product Hunt RSS
+- Reddit PullPush submissions/comments
+- Reddit RSS recent feeds
+- Optional YouTube via `yt-dlp`
 
 Recommended next integrations:
 
@@ -122,4 +126,25 @@ Recommended next integrations:
 - Product Hunt API/RSS
 - Amazon Best Sellers through compliant API/export workflows
 - Review platforms with permitted scraping/API access
+
+## Large One-Year Dashboard Crawl
+
+Build a large-crawl config:
+
+```bash
+python scripts/build_large_mentions_config.py --output work/mentions_large_1y.json
+```
+
+Run a one-year mention crawl:
+
+```bash
+python -m trend_copilot_data.pipeline \
+  --mode init \
+  --sources mentions \
+  --start-date 2025-06-25 \
+  --end-date 2026-06-25 \
+  --config work/mentions_large_1y.json
+```
+
+This appends into `data/raw/trend_mentions_raw.csv` and deduplicates by `mention_id`.
 - Brand/community forums with RSS or public APIs

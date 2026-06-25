@@ -5,6 +5,7 @@ def test_mention_record_schema():
     row = _record(
         source="google_news_rss",
         platform="news",
+        sub_source="Example",
         source_type="article_snippet",
         keyword="matcha",
         query="matcha",

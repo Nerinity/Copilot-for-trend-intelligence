@@ -10,7 +10,20 @@
     "gdelt_enabled": false,
     "gdelt_per_query": 60,
     "hackernews_enabled": true,
-    "hackernews_per_query": 40
+    "hackernews_per_query": 40,
+    "producthunt_enabled": true,
+    "producthunt_per_query": 20,
+    "reddit_pullpush_enabled": true,
+    "reddit_pullpush_per_query": 120,
+    "reddit_pullpush_comments_enabled": true,
+    "reddit_rss_enabled": true,
+    "reddit_rss_per_subreddit": 80,
+    "reddit_rss_max_subreddits": 180,
+    "reddit_rss_sorts": ["hot", "new", "top?t=week", "top?t=month", "top?t=year", "rising"],
+    "youtube_ytdlp_enabled": false,
+    "youtube_max_queries": 20,
+    "youtube_videos_per_query": 8,
+    "youtube_comments_per_video": 30
   },
   "reddit": {
     "posts_per_subreddit": 45,

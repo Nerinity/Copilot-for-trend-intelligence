@@ -73,8 +73,8 @@ engagement, twitter_context, layer, query, url
 
 ```text
 mention_id, source, platform, source_type, keyword, query, category,
-title, text, full_text, author, community, published_at, collected_at,
-url, engagement_score, metrics_json
+sub_source, title, text, full_text, author, community, published_at,
+collected_at, url, engagement_score, metrics_json
 ```
 
 This is the dashboard-ready raw layer. Every row is one concrete mention of a product/trend keyword from a public source. The `title`, `text`, and `full_text` fields are the direct NLP inputs for topic extraction, sentiment, pain points, and trend evidence views.

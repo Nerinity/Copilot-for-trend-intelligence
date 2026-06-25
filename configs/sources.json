@@ -3,6 +3,7 @@
     "product_category_theme_csv": "configs/taxonomy/product_taxonomy_clean.csv"
   },
   "dashboard_mentions": {
+    "checkpoint_each_source": true,
     "max_queries": 120,
     "taxonomy_query_limit": 80,
     "google_news_enabled": true,
@@ -16,6 +17,11 @@
     "reddit_pullpush_enabled": true,
     "reddit_pullpush_per_query": 120,
     "reddit_pullpush_comments_enabled": true,
+    "reddit_subreddit_pullpush_enabled": true,
+    "reddit_subreddit_pullpush_per_subreddit": 120,
+    "reddit_subreddit_pullpush_max_subreddits": 220,
+    "reddit_subreddit_pullpush_comments_enabled": true,
+    "reddit_subreddit_pullpush_max_pages": 3,
     "reddit_rss_enabled": true,
     "reddit_rss_per_subreddit": 80,
     "reddit_rss_max_subreddits": 180,
@@ -24,6 +30,54 @@
     "youtube_max_queries": 20,
     "youtube_videos_per_query": 8,
     "youtube_comments_per_video": 30
+  },
+  "semantic_filter": {
+    "min_relevance_score": 0.018,
+    "keep_tiktok_score": 0.18,
+    "tiktok_priority_boost": 0.3,
+    "keep_all": false,
+    "seed_queries": [
+      "TikTok made me buy it",
+      "TikTok Shop honest review",
+      "Amazon finds worth it",
+      "viral product review",
+      "creator affiliate product",
+      "UGC creator product sample",
+      "live shopping product",
+      "North America consumer trend",
+      "favorite things product recommendation",
+      "holy grail product",
+      "not worth it viral product",
+      "dupe worth it",
+      "sold out restock product",
+      "new launch review"
+    ],
+    "business_contexts": [
+      {
+        "label": "tiktok_creator_commerce",
+        "text": "TikTok Shop, TikTok made me buy it, creator affiliate, live shopping, viral product review, haul, unboxing, GRWM, UGC creator, commission, creator storefront, influencer product recommendation"
+      },
+      {
+        "label": "consumer_product_discovery",
+        "text": "favorite product, holy grail, worth it, not worth it, honest review, dupe, Amazon finds, target finds, best purchase, product recommendation, restock, sold out, new launch"
+      },
+      {
+        "label": "beauty_wellness_lifestyle",
+        "text": "skincare routine, beauty product, wellness supplement, protein coffee, magnesium, gut health, red light therapy, ice roller, hair care, self care, fitness recovery"
+      },
+      {
+        "label": "home_food_family_pets",
+        "text": "home organization, cleaning hack, kitchen gadget, functional beverage, meal prep, baby product, pet product, dog enrichment, cat fountain, decor trend, cozy home"
+      },
+      {
+        "label": "fashion_accessories_travel",
+        "text": "fashion trend, outfit, handbag, shoes, jewelry, quiet luxury, capsule wardrobe, travel gear, packing cubes, carry on, summer essentials"
+      },
+      {
+        "label": "creator_business_signal",
+        "text": "brand deal, sponsorship, paid partnership, PR package, gifted product, affiliate conversion, product samples, content hook, social commerce, ecommerce, Shopify, Amazon seller"
+      }
+    ]
   },
   "reddit": {
     "posts_per_subreddit": 45,
@@ -111,10 +165,15 @@
         "ActionFigures", "plushies", "PokemonTCG", "collectables", "3DS", "SBCGaming"
       ],
       "creator_commerce_social": [
-        "TikTokShop", "Tiktokhelp", "TikTok", "socialmedia", "ContentCreators",
+        "TikTokShop", "Tiktokhelp", "TikTok", "TikTokCringe", "Tiktoktrending",
+        "TiktokHelpers", "learnTikTok", "TikTokdrama", "TikTokLounge",
+        "TikTokMarketing", "TikTokMonetizing", "tiktokcreatorclub", "tiktokhelp",
+        "socialmedia", "ContentCreators",
         "PartneredYoutube", "NewTubers", "youtube", "Instagram", "AffiliateMarketing",
-        "ecommerce", "EntrepreneurRideAlong", "EtsySellers", "smallbusiness", "shopify",
-        "AmazonSeller", "FulfillmentByAmazon", "Flipping"
+        "influencermarketing", "influencer", "UGCcreators", "SocialMediaMarketing",
+        "ecommerce", "dropshipping", "EntrepreneurRideAlong", "EtsySellers",
+        "smallbusiness", "shopify", "AmazonSeller", "FulfillmentByAmazon", "Flipping",
+        "SideHustle", "WorkOnline", "beermoney", "livestreaming", "LiveSelling"
       ],
       "deals_reviews_shopping": [
         "ProductReviews", "Deals", "Frugal", "shutupandtakemymoney",

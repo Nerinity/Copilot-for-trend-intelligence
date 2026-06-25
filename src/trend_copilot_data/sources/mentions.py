@@ -16,8 +16,9 @@ import pandas as pd
 import requests
 
 from ..preprocess import clean_text, stable_hash
+from ..semantic import context_query_terms, score_mentions
 from ..settings import Settings
-from ..storage import now_utc
+from ..storage import append_dedup_csv, now_utc
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +40,10 @@ MENTION_COLUMNS = [
     "collected_at",
     "url",
     "engagement_score",
+    "semantic_relevance_score",
+    "tiktok_relevance_score",
+    "business_context_label",
+    "collector_priority_score",
     "metrics_json",
 ]
 
@@ -61,6 +66,8 @@ def _date_to_unix(value: str, end: bool = False) -> int:
 
 def build_queries(config: dict[str, Any], taxonomy_terms: list[str] | None = None) -> list[dict[str, str]]:
     queries: list[dict[str, str]] = []
+    for term in context_query_terms(config):
+        queries.append({"keyword": term[:80], "query": term, "category": "business_context"})
     for category, keywords in config.get("google_trends", {}).get("category_keywords", {}).items():
         for keyword in keywords:
             queries.append({"keyword": keyword, "query": keyword, "category": category})
@@ -125,6 +132,10 @@ def _record(
         "collected_at": now_utc(),
         "url": url,
         "engagement_score": engagement_score,
+        "semantic_relevance_score": 0.0,
+        "tiktok_relevance_score": 0.0,
+        "business_context_label": "",
+        "collector_priority_score": 0.0,
         "metrics_json": json.dumps(metrics or {}, ensure_ascii=False),
     }
 
@@ -408,6 +419,120 @@ def collect_reddit_pullpush(
     return records
 
 
+def collect_reddit_subreddit_pullpush(
+    config: dict[str, Any],
+    settings: Settings,
+    start_date: str,
+    end_date: str,
+    per_subreddit: int,
+    max_subreddits: int,
+    include_comments: bool = True,
+    max_pages: int = 3,
+) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    endpoints = [("submission", "https://api.pullpush.io/reddit/search/submission/")]
+    if include_comments:
+        endpoints.append(("comment", "https://api.pullpush.io/reddit/search/comment/"))
+
+    subreddit_items: list[tuple[str, str]] = []
+    for category, subs in config.get("reddit", {}).get("subreddit_categories", {}).items():
+        for sub in subs:
+            subreddit_items.append((category, sub))
+
+    def priority(item: tuple[str, str]) -> tuple[int, str]:
+        category, sub = item
+        haystack = f"{category} {sub}".lower()
+        if "tiktok" in haystack or "creator_commerce" in haystack:
+            return (0, sub.lower())
+        if any(token in haystack for token in ["shopping", "reviews", "beauty", "wellness"]):
+            return (1, sub.lower())
+        return (2, sub.lower())
+
+    subreddit_items = sorted(list(dict.fromkeys(subreddit_items)), key=priority)[:max_subreddits]
+    start_ts = _date_to_unix(start_date)
+    end_ts = _date_to_unix(end_date, end=True)
+    headers = {"User-Agent": settings.reddit_user_agent}
+
+    for category, subreddit in subreddit_items:
+        collected_for_sub = 0
+        for source_type, endpoint in endpoints:
+            before = end_ts
+            pages = 0
+            while collected_for_sub < per_subreddit and pages < max_pages:
+                params = {
+                    "subreddit": subreddit,
+                    "after": start_ts,
+                    "before": before,
+                    "size": min(100, per_subreddit - collected_for_sub),
+                    "sort": "desc",
+                    "sort_type": "created_utc",
+                }
+                try:
+                    response = requests.get(endpoint, params=params, headers=headers, timeout=60)
+                    if response.status_code == 429:
+                        time.sleep(15)
+                        continue
+                    if response.status_code != 200:
+                        log.warning(
+                            "PullPush subreddit %s HTTP %s for r/%s",
+                            source_type,
+                            response.status_code,
+                            subreddit,
+                        )
+                        break
+                    rows = response.json().get("data", [])
+                except Exception as exc:
+                    log.warning("PullPush subreddit %s failed for r/%s: %s", source_type, subreddit, exc)
+                    break
+                if not rows:
+                    break
+                for row in rows:
+                    created = row.get("created_utc") or 0
+                    published = datetime.fromtimestamp(created, tz=timezone.utc).isoformat() if created else ""
+                    if source_type == "submission":
+                        title = row.get("title", "")
+                        text = row.get("selftext", "")
+                        url = f"https://reddit.com{row.get('permalink', '')}"
+                        engagement = (row.get("score") or 0) + (row.get("num_comments") or 0) * 3
+                        metrics = {
+                            "score": row.get("score", 0),
+                            "num_comments": row.get("num_comments", 0),
+                            "upvote_ratio": row.get("upvote_ratio", 0),
+                        }
+                    else:
+                        title = row.get("link_title", "")
+                        text = row.get("body", "")
+                        url = f"https://reddit.com{row.get('permalink', '')}"
+                        engagement = row.get("score") or 0
+                        metrics = {"score": row.get("score", 0), "link_id": row.get("link_id", "")}
+                    records.append(
+                        _record(
+                            source="reddit_pullpush_subreddit",
+                            platform="reddit",
+                            sub_source=f"r/{subreddit}",
+                            source_type=source_type,
+                            keyword=f"r/{subreddit}",
+                            query=f"r/{subreddit} broad recent",
+                            category=category,
+                            title=title,
+                            text=text,
+                            author=row.get("author", "[deleted]"),
+                            community=subreddit,
+                            published_at=published,
+                            url=url,
+                            engagement_score=engagement,
+                            metrics=metrics,
+                        )
+                    )
+                collected_for_sub += len(rows)
+                pages += 1
+                before = min((r.get("created_utc") or before for r in rows), default=before)
+                if len(rows) < params["size"]:
+                    break
+                time.sleep(settings.min_request_delay_seconds)
+    return records
+
+
 def collect_reddit_rss(
     config: dict[str, Any],
     query_items: list[dict[str, str]],
@@ -571,6 +696,25 @@ def collect_youtube_ytdlp(
     return records
 
 
+def _checkpoint_records(
+    records: list[dict[str, Any]],
+    *,
+    label: str,
+    config: dict[str, Any],
+    settings: Settings,
+) -> None:
+    if not records or not config.get("dashboard_mentions", {}).get("checkpoint_each_source", True):
+        return
+    df = pd.DataFrame(records).reindex(columns=MENTION_COLUMNS)
+    df = score_mentions(df.drop_duplicates("mention_id"), config).reindex(columns=MENTION_COLUMNS)
+    if df.empty:
+        log.info("Checkpoint skipped for %s: no semantically relevant rows", label)
+        return
+    path = settings.data_dir / "raw" / "trend_mentions_raw.csv"
+    append_dedup_csv(df, path, subset=["mention_id"])
+    log.info("Checkpoint saved for %s: %s rows", label, len(df))
+
+
 def collect(
     config: dict[str, Any],
     settings: Settings,
@@ -583,37 +727,60 @@ def collect(
     log.info("Dashboard mentions: collecting %s queries", len(queries))
     records: list[dict[str, Any]] = []
     if cfg.get("google_news_enabled", True):
-        records.extend(collect_google_news_rss(queries, settings, start_date, end_date, int(cfg.get("google_news_per_query", 40))))
+        source_records = collect_google_news_rss(queries, settings, start_date, end_date, int(cfg.get("google_news_per_query", 40)))
+        _checkpoint_records(source_records, label="google_news_rss", config=config, settings=settings)
+        records.extend(source_records)
     if cfg.get("gdelt_enabled", True):
-        records.extend(collect_gdelt(queries, settings, start_date, end_date, int(cfg.get("gdelt_per_query", 40))))
+        source_records = collect_gdelt(queries, settings, start_date, end_date, int(cfg.get("gdelt_per_query", 40)))
+        _checkpoint_records(source_records, label="gdelt_doc", config=config, settings=settings)
+        records.extend(source_records)
     if cfg.get("hackernews_enabled", True):
-        records.extend(collect_hackernews_mentions(queries, settings, start_date, end_date, int(cfg.get("hackernews_per_query", 30))))
+        source_records = collect_hackernews_mentions(queries, settings, start_date, end_date, int(cfg.get("hackernews_per_query", 30)))
+        _checkpoint_records(source_records, label="hackernews_algolia", config=config, settings=settings)
+        records.extend(source_records)
     if cfg.get("producthunt_enabled", True):
-        records.extend(collect_producthunt_rss(queries, settings, int(cfg.get("producthunt_per_query", 20))))
+        source_records = collect_producthunt_rss(queries, settings, int(cfg.get("producthunt_per_query", 20)))
+        _checkpoint_records(source_records, label="producthunt_rss", config=config, settings=settings)
+        records.extend(source_records)
     if cfg.get("reddit_pullpush_enabled", True):
-        records.extend(
-            collect_reddit_pullpush(
+        source_records = collect_reddit_pullpush(
                 queries,
                 settings,
                 start_date,
                 end_date,
                 int(cfg.get("reddit_pullpush_per_query", 120)),
                 include_comments=bool(cfg.get("reddit_pullpush_comments_enabled", True)),
-            )
         )
+        _checkpoint_records(source_records, label="reddit_pullpush", config=config, settings=settings)
+        records.extend(source_records)
+    if cfg.get("reddit_subreddit_pullpush_enabled", True):
+        source_records = collect_reddit_subreddit_pullpush(
+                config,
+                settings,
+                start_date,
+                end_date,
+                int(cfg.get("reddit_subreddit_pullpush_per_subreddit", 120)),
+                int(cfg.get("reddit_subreddit_pullpush_max_subreddits", 200)),
+                include_comments=bool(cfg.get("reddit_subreddit_pullpush_comments_enabled", True)),
+                max_pages=int(cfg.get("reddit_subreddit_pullpush_max_pages", 3)),
+        )
+        _checkpoint_records(source_records, label="reddit_pullpush_subreddit", config=config, settings=settings)
+        records.extend(source_records)
     if cfg.get("reddit_rss_enabled", True):
-        records.extend(collect_reddit_rss(config, queries, settings, int(cfg.get("reddit_rss_per_subreddit", 80))))
+        source_records = collect_reddit_rss(config, queries, settings, int(cfg.get("reddit_rss_per_subreddit", 80)))
+        _checkpoint_records(source_records, label="reddit_rss", config=config, settings=settings)
+        records.extend(source_records)
     if cfg.get("youtube_ytdlp_enabled", False):
-        records.extend(
-            collect_youtube_ytdlp(
+        source_records = collect_youtube_ytdlp(
                 queries,
                 settings,
                 int(cfg.get("youtube_max_queries", 20)),
                 int(cfg.get("youtube_videos_per_query", 8)),
                 int(cfg.get("youtube_comments_per_video", 30)),
-            )
         )
+        _checkpoint_records(source_records, label="youtube_ytdlp", config=config, settings=settings)
+        records.extend(source_records)
     df = pd.DataFrame(records).reindex(columns=MENTION_COLUMNS)
     if not df.empty:
-        df = df.drop_duplicates("mention_id")
+        df = score_mentions(df.drop_duplicates("mention_id"), config).reindex(columns=MENTION_COLUMNS)
     return {"trend_mentions_raw": df}

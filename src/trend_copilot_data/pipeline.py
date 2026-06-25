@@ -17,12 +17,28 @@ log = logging.getLogger(__name__)
 
 
 def _save_frames(frames: dict[str, pd.DataFrame], data_dir: Path, run_id: str) -> None:
+    dedupe_keys = {
+        "reddit_culture_trends": ["post_id"],
+        "reddit_product_trends": ["post_id"],
+        "reddit_tfidf_keywords": ["keyword", "layer"],
+        "gtrends_trending": ["keyword", "type", "fetched_at"],
+        "gtrends_timeseries": ["keyword"],
+        "gtrends_rising": ["seed_keyword", "related_keyword", "signal_type"],
+        "gtrends_category_summary": ["category"],
+        "twitter_trending": ["topic", "fetched_at"],
+        "twitter_culture_posts": ["tweet_id"],
+        "twitter_product_posts": ["tweet_id"],
+    }
     for name, df in frames.items():
+        if name.startswith("_"):
+            continue
         if df is None or df.empty:
             log.info("%s produced no rows", name)
             continue
         raw_path = data_dir / "raw" / f"{name}.csv"
-        if "content_hash" in df.columns:
+        if name in dedupe_keys:
+            append_dedup_csv(df, raw_path, subset=dedupe_keys[name])
+        elif "content_hash" in df.columns:
             append_dedup_csv(df, raw_path, subset=["content_hash"])
         elif "keyword" in df.columns and "source" in df.columns:
             append_dedup_csv(df, raw_path, subset=[c for c in ["source", "keyword", "method"] if c in df.columns])
@@ -71,7 +87,7 @@ def run_collection(
         frames.update(public_sources.collect(config, settings, run_id, start_date, end_date))
 
     seed_keywords = []
-    for key in ["reddit_keywords", "public_keywords", "twitter_keywords"]:
+    for key in ["reddit_tfidf_keywords", "public_keywords", "twitter_keywords_normalized"]:
         df = frames.get(key)
         if df is not None and not df.empty and "keyword" in df.columns:
             seed_keywords.extend(df["keyword"].dropna().astype(str).head(80).tolist())

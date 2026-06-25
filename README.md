@@ -120,17 +120,30 @@ Outputs:
 - `data/state/collection_state.json`: run history and source watermarks
 - `logs/*.log`: execution logs
 
-## Data Contract
+## Raw Data Outputs
 
-All public discussion sources are normalized into this schema:
+Stage 1 writes source-native raw CSV files first, because these are the easiest inputs for NLP, sentiment, trend velocity, and cross-platform validation.
 
-```text
-run_id, source, source_type, source_id, source_url, category_hint,
-community, query, title, text, clean_text, author, published_at,
-collected_at, engagement_score, metrics_json, content_hash, raw_json
-```
+Reddit:
 
-This gives future AI/LLM layers a stable contract regardless of source.
+- `data/raw/reddit_culture_trends.csv`
+- `data/raw/reddit_product_trends.csv`
+- `data/raw/reddit_tfidf_keywords.csv`
+
+Google Trends:
+
+- `data/raw/gtrends_trending.csv`
+- `data/raw/gtrends_timeseries.csv`
+- `data/raw/gtrends_rising.csv`
+- `data/raw/gtrends_category_summary.csv`
+
+Twitter/X:
+
+- `data/raw/twitter_trending.csv`
+- `data/raw/twitter_culture_posts.csv`
+- `data/raw/twitter_product_posts.csv`
+
+The normalized cross-source schema is kept internally for future processed tables, but the default Stage 1 deliverable is the raw files above.
 
 ## GitHub Upload
 

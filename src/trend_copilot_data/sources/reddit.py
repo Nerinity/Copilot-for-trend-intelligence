@@ -17,6 +17,20 @@ from ..storage import normalize_records, now_utc
 log = logging.getLogger(__name__)
 _REDDIT_ACCESS_TOKEN: str | None = None
 
+PRODUCT_CATEGORIES = {
+    "beauty_skincare_hair",
+    "food_beverage_kitchen",
+    "fashion_apparel_accessories",
+    "home_living_decor_cleaning",
+    "tech_gadgets_creator_tools",
+    "parenting_baby_family",
+    "pets",
+    "outdoor_travel_auto",
+    "gaming_toys_collectibles",
+    "creator_commerce_social",
+    "deals_reviews_shopping",
+}
+
 
 def _parse_dt(value: str) -> datetime:
     return datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
@@ -210,6 +224,35 @@ def _comment_record(
     }
 
 
+def _layer_for_category(category: str, expanded: bool = False) -> str:
+    if category in PRODUCT_CATEGORIES:
+        return "product_trend_expanded" if expanded else "product_trend"
+    return "culture_trend_expanded" if expanded else "culture_trend"
+
+
+def _raw_post_row(post: dict[str, Any], layer: str, start_dt: datetime, end_dt: datetime) -> dict | None:
+    created = _created_at(post)
+    if created < start_dt or created > end_dt:
+        return None
+    title = post.get("title", "")
+    body = post.get("selftext", "")
+    return {
+        "post_id": post.get("id", ""),
+        "subreddit": post.get("subreddit", ""),
+        "layer": layer,
+        "title": title[:500],
+        "body": body[:500],
+        "full_text": clean_text(f"{title} {body}"),
+        "score": post.get("score", 0),
+        "upvote_ratio": post.get("upvote_ratio", 0),
+        "num_comments": post.get("num_comments", 0),
+        "author": post.get("author", "[deleted]"),
+        "created_date": created.strftime("%Y-%m-%d"),
+        "url": f"https://reddit.com{post.get('permalink', '')}",
+        "flair": post.get("link_flair_text", "") or "",
+    }
+
+
 def collect(
     config: dict[str, Any],
     settings: Settings,
@@ -230,7 +273,11 @@ def collect(
 
     post_records: list[dict] = []
     comment_records: list[dict] = []
+    culture_rows: list[dict] = []
+    product_rows: list[dict] = []
     texts: list[str] = []
+    culture_texts: list[str] = []
+    product_texts: list[str] = []
 
     for category, subreddits in categories.items():
         selected = subreddits[:max_subreddits_per_category] if max_subreddits_per_category else subreddits
@@ -244,6 +291,15 @@ def collect(
                 time.sleep(settings.min_request_delay_seconds)
 
             for post in seen_posts.values():
+                layer = _layer_for_category(category)
+                raw_row = _raw_post_row(post, layer, start_dt, end_dt)
+                if raw_row:
+                    if layer.startswith("product"):
+                        product_rows.append(raw_row)
+                        product_texts.append(raw_row["full_text"])
+                    else:
+                        culture_rows.append(raw_row)
+                        culture_texts.append(raw_row["full_text"])
                 rec = _post_record(post, category, settings, run_id, start_dt, end_dt)
                 if not rec:
                     continue
@@ -261,6 +317,11 @@ def collect(
     for query in seed_queries:
         for post in search_reddit(query, settings, limit=search_limit):
             category = "search_expansion"
+            layer = _layer_for_category(category, expanded=True)
+            raw_row = _raw_post_row(post, layer, start_dt, end_dt)
+            if raw_row:
+                culture_rows.append(raw_row)
+                culture_texts.append(raw_row["full_text"])
             rec = _post_record(post, category, settings, run_id, start_dt, end_dt, query=query)
             if rec:
                 post_records.append(rec)
@@ -274,5 +335,24 @@ def collect(
         keywords_df.insert(0, "run_id", run_id)
         keywords_df["source"] = "reddit"
         keywords_df["collected_at"] = now_utc()
+    raw_keywords = pd.DataFrame(
+        [
+            {"keyword": item["keyword"], "tfidf_score": item["score"], "layer": "culture"}
+            for item in extract_keywords(culture_texts, top_n=60)
+        ]
+        + [
+            {"keyword": item["keyword"], "tfidf_score": item["score"], "layer": "product"}
+            for item in extract_keywords(product_texts, top_n=60)
+        ]
+    )
+    culture_df = pd.DataFrame(culture_rows).drop_duplicates("post_id") if culture_rows else pd.DataFrame()
+    product_df = pd.DataFrame(product_rows).drop_duplicates("post_id") if product_rows else pd.DataFrame()
     log.info("Reddit collected %s posts, %s comments", len(posts_df), len(comments_df))
-    return {"reddit_posts": posts_df, "reddit_comments": comments_df, "reddit_keywords": keywords_df}
+    return {
+        "reddit_culture_trends": culture_df,
+        "reddit_product_trends": product_df,
+        "reddit_tfidf_keywords": raw_keywords,
+        "_reddit_posts_normalized": posts_df,
+        "_reddit_comments_normalized": comments_df,
+        "_reddit_keywords_normalized": keywords_df,
+    }

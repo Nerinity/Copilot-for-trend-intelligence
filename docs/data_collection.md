@@ -40,6 +40,21 @@ The collector pulls:
 
 This gives both velocity and depth: new posts show early movement, top posts show engagement quality, and comments reveal consumer pain points.
 
+Default raw outputs:
+
+```text
+reddit_culture_trends.csv:
+post_id, subreddit, layer, title, body, full_text, score, upvote_ratio,
+num_comments, author, created_date, url, flair
+
+reddit_product_trends.csv:
+post_id, subreddit, layer, title, body, full_text, score, upvote_ratio,
+num_comments, author, created_date, url, flair
+
+reddit_tfidf_keywords.csv:
+keyword, tfidf_score, layer
+```
+
 ## Twitter/X Strategy
 
 The collector uses:
@@ -61,6 +76,36 @@ Outputs:
 - growth percentage
 - related top/rising queries
 - category summary
+
+Default raw outputs:
+
+```text
+gtrends_trending.csv:
+keyword, type, rank, category, fetched_at
+
+gtrends_timeseries.csv:
+keyword, category, current_score, prev_score, peak_score, peak_week,
+growth_recent_pct, growth_longterm_pct, trend_shape, is_rising
+
+gtrends_rising.csv:
+seed_keyword, related_keyword, rise_value, is_breakout, category, signal_type
+
+gtrends_category_summary.csv:
+category, trend_score, keyword_count, rising_keywords, top_keywords
+```
+
+## Twitter/X Strategy
+
+Default raw outputs:
+
+```text
+twitter_trending.csv:
+topic, rank, tweet_volume, topic_type, fetched_at
+
+twitter_culture_posts.csv and twitter_product_posts.csv:
+tweet_id, text, created_at, author_followers, likes, retweets, replies,
+engagement, twitter_context, layer, query, url
+```
 
 ## Additional Public Sources
 

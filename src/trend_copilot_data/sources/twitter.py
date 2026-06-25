@@ -15,9 +15,60 @@ from ..storage import normalize_records, now_utc
 
 log = logging.getLogger(__name__)
 
+CULTURE_SIGNALS = [
+    "aesthetic", "vibe", "era", "core", "lifestyle", "trend", "culture",
+    "routine", "wellness", "quiet luxury", "underconsumption", "dopamine",
+]
+
+PRODUCT_SIGNALS = [
+    "review", "haul", "unboxing", "worth it", "buy", "product", "shop",
+    "sale", "deal", "brand", "launch", "tiktok shop", "amazon", "dupe",
+    "skincare", "makeup", "supplement", "gadget",
+]
+
 
 def _headers(settings: Settings) -> dict[str, str]:
     return {"Authorization": f"Bearer {settings.twitter_bearer_token}"}
+
+
+def classify_topic(text: str) -> str:
+    t = text.lower()
+    culture_hits = sum(1 for signal in CULTURE_SIGNALS if signal in t)
+    product_hits = sum(1 for signal in PRODUCT_SIGNALS if signal in t)
+    if product_hits > culture_hits:
+        return "product_trend"
+    if culture_hits > product_hits:
+        return "culture_trend"
+    if product_hits or culture_hits:
+        return "mixed"
+    return "other"
+
+
+def fetch_trending_topics(settings: Settings, woeid: int = 23424977) -> pd.DataFrame:
+    if not settings.twitter_bearer_token:
+        return pd.DataFrame()
+    url = f"https://api.twitter.com/1.1/trends/place.json?id={woeid}"
+    try:
+        response = requests.get(url, headers=_headers(settings), timeout=settings.request_timeout_seconds)
+        if response.status_code != 200:
+            log.warning("Twitter trends HTTP %s: %s", response.status_code, response.text[:160])
+            return pd.DataFrame()
+        rows = []
+        for rank, trend in enumerate(response.json()[0].get("trends", []), 1):
+            topic = trend.get("name", "")
+            rows.append(
+                {
+                    "topic": topic,
+                    "rank": rank,
+                    "tweet_volume": trend.get("tweet_volume") or 0,
+                    "topic_type": classify_topic(topic),
+                    "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                }
+            )
+        return pd.DataFrame(rows)
+    except Exception as exc:
+        log.warning("Twitter trends failed: %s", exc)
+        return pd.DataFrame()
 
 
 def build_queries(config: dict[str, Any], taxonomy_terms: list[str] | None = None) -> list[str]:
@@ -103,6 +154,8 @@ def collect(
     max_results = int(config.get("twitter", {}).get("max_results_per_query", 80))
 
     records = []
+    culture_rows = []
+    product_rows = []
     texts = []
     hashtag_counts: dict[str, int] = {}
     for query in build_queries(config, taxonomy_terms):
@@ -123,6 +176,27 @@ def collect(
                 + metrics.get("reply_count", 0) * 3
                 + metrics.get("quote_count", 0) * 2
             )
+            layer = classify_topic(query)
+            if layer == "mixed":
+                layer = "product_trend" if any(s in query.lower() for s in PRODUCT_SIGNALS) else "culture_trend"
+            raw_row = {
+                "tweet_id": tweet.get("id", ""),
+                "text": text,
+                "created_at": tweet.get("created_at", ""),
+                "author_followers": user.get("public_metrics", {}).get("followers_count", 0),
+                "likes": metrics.get("like_count", 0),
+                "retweets": metrics.get("retweet_count", 0),
+                "replies": metrics.get("reply_count", 0),
+                "engagement": engagement,
+                "twitter_context": "|".join(contexts[:3]),
+                "layer": layer,
+                "query": query,
+                "url": f"https://twitter.com/i/web/status/{tweet.get('id')}",
+            }
+            if layer == "product_trend":
+                product_rows.append(raw_row)
+            else:
+                culture_rows.append(raw_row)
             record = {
                 "run_id": run_id,
                 "source": "twitter_x",
@@ -158,4 +232,13 @@ def collect(
     )
     if not hashtag_df.empty:
         keyword_df = pd.concat([keyword_df, hashtag_df], ignore_index=True)
-    return {"twitter_posts": normalize_records(records), "twitter_keywords": keyword_df}
+    trending_df = fetch_trending_topics(settings)
+    culture_df = pd.DataFrame(culture_rows).drop_duplicates("tweet_id") if culture_rows else pd.DataFrame()
+    product_df = pd.DataFrame(product_rows).drop_duplicates("tweet_id") if product_rows else pd.DataFrame()
+    return {
+        "twitter_trending": trending_df,
+        "twitter_culture_posts": culture_df,
+        "twitter_product_posts": product_df,
+        "_twitter_posts_normalized": normalize_records(records),
+        "_twitter_keywords_normalized": keyword_df,
+    }

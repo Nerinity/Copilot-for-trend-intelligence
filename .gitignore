@@ -17,6 +17,7 @@ data/state/*.json
 outputs/*.csv
 outputs/*.json
 outputs/*.zip
+outputs/*/
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/snapshots/.gitkeep

@@ -6,8 +6,6 @@ from typing import Any
 
 import pandas as pd
 
-from ..storage import now_utc
-
 log = logging.getLogger(__name__)
 
 
@@ -32,7 +30,7 @@ def _infer_category(keyword: str, category_keywords: dict[str, list[str]]) -> st
     for category, terms in category_keywords.items():
         score = sum(1 for term in terms if term.lower() in text)
         if score > hits:
-            best = category
+            best = category.replace("_", " ").title().replace("Ai", "AI")
             hits = score
     return best
 
@@ -52,8 +50,9 @@ def collect(
     pytrends = _trend_req()
     if pytrends is None:
         return {
+            "gtrends_trending": pd.DataFrame(),
             "gtrends_timeseries": pd.DataFrame(),
-            "gtrends_related_queries": pd.DataFrame(),
+            "gtrends_rising": pd.DataFrame(),
             "gtrends_category_summary": pd.DataFrame(),
         }
 
@@ -70,6 +69,7 @@ def collect(
 
     timeseries_rows = []
     related_rows = []
+    trending_df = _fetch_trending_searches(pytrends, category_keywords)
     batch_size = int(cfg.get("batch_size", 1))
     for batch in _batched(keywords, batch_size):
         try:
@@ -83,23 +83,35 @@ def collect(
                     if series.empty:
                         continue
                     n = len(series)
-                    early = float(series.iloc[: max(1, n // 3)].mean())
-                    recent = float(series.iloc[max(0, n - max(2, n // 3)) :].mean())
-                    growth = ((recent - early) / max(early, 1)) * 100
+                    current = float(series.iloc[max(0, n - 28) :].mean())
+                    prev = float(series.iloc[max(0, n - 56) : max(1, n - 28)].mean())
+                    early = float(series.iloc[: max(1, n // 4)].mean())
+                    peak = float(series.max())
+                    peak_week = str(series.idxmax().date()) if hasattr(series.idxmax(), "date") else ""
+                    growth_recent = ((current - prev) / max(prev, 1)) * 100
+                    growth_longterm = ((current - early) / max(early, 1)) * 100
+                    if growth_recent > 20 and current > 30:
+                        trend_shape = "accelerating"
+                    elif growth_recent > 5:
+                        trend_shape = "rising"
+                    elif growth_recent > -5:
+                        trend_shape = "stable"
+                    elif current >= peak * 0.8:
+                        trend_shape = "at_peak"
+                    else:
+                        trend_shape = "declining"
                     timeseries_rows.append(
                         {
-                            "run_id": run_id,
-                            "source": "google_trends",
                             "keyword": kw,
-                            "category_hint": _infer_category(kw, category_keywords),
-                            "timeframe": timeframe,
-                            "geo": geo,
-                            "early_score": round(early, 2),
-                            "recent_score": round(recent, 2),
-                            "peak_score": round(float(series.max()), 2),
-                            "growth_pct": round(growth, 2),
-                            "is_rising": growth >= float(cfg.get("rising_threshold_pct", 20)),
-                            "collected_at": now_utc(),
+                            "category": _infer_category(kw, category_keywords),
+                            "current_score": round(current, 2),
+                            "prev_score": round(prev, 2),
+                            "peak_score": round(peak, 2),
+                            "peak_week": peak_week,
+                            "growth_recent_pct": round(growth_recent, 2),
+                            "growth_longterm_pct": round(growth_longterm, 2),
+                            "trend_shape": trend_shape,
+                            "is_rising": trend_shape in {"accelerating", "rising"},
                         }
                     )
             related = pytrends.related_queries()
@@ -114,15 +126,12 @@ def collect(
                         kw = str(row.get("query", "")).strip()
                         related_rows.append(
                             {
-                                "run_id": run_id,
-                                "source": "google_trends",
                                 "seed_keyword": seed,
-                                "keyword": kw,
-                                "value": row.get("value", 0),
-                                "signal_type": signal_type,
+                                "related_keyword": kw,
+                                "rise_value": row.get("value", 0),
                                 "is_breakout": str(row.get("value", "")).lower() == "breakout",
-                                "category_hint": _infer_category(kw, category_keywords),
-                                "collected_at": now_utc(),
+                                "category": _infer_category(kw, category_keywords),
+                                "signal_type": f"related_{signal_type}",
                             }
                         )
             time.sleep(float(cfg.get("request_delay_seconds", 3)))
@@ -134,36 +143,85 @@ def collect(
     related_df = pd.DataFrame(related_rows)
     summary_df = _summarize(timeseries_df, related_df)
     return {
+        "gtrends_trending": trending_df,
         "gtrends_timeseries": timeseries_df,
-        "gtrends_related_queries": related_df,
+        "gtrends_rising": related_df,
         "gtrends_category_summary": summary_df,
     }
+
+
+def _fetch_trending_searches(pytrends: Any, category_keywords: dict[str, list[str]]) -> pd.DataFrame:
+    rows = []
+    try:
+        df = pytrends.trending_searches(pn="united_states")
+        for rank, row in df.iterrows():
+            keyword = str(row.iloc[0]).strip()
+            rows.append(
+                {
+                    "keyword": keyword,
+                    "type": "realtime_trending",
+                    "rank": rank + 1,
+                    "category": _infer_category(keyword, category_keywords),
+                    "fetched_at": pd.Timestamp.now().strftime("%Y-%m-%d"),
+                }
+            )
+    except Exception as exc:
+        log.warning("Google Trends trending searches failed: %s", exc)
+    try:
+        today = pytrends.today_searches(pn="US")
+        for keyword in today:
+            keyword = str(keyword).strip()
+            rows.append(
+                {
+                    "keyword": keyword,
+                    "type": "today_search",
+                    "rank": None,
+                    "category": _infer_category(keyword, category_keywords),
+                    "fetched_at": pd.Timestamp.now().strftime("%Y-%m-%d"),
+                }
+            )
+    except Exception as exc:
+        log.warning("Google Trends today searches failed: %s", exc)
+    return pd.DataFrame(rows).drop_duplicates("keyword") if rows else pd.DataFrame()
 
 
 def _summarize(timeseries_df: pd.DataFrame, related_df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     categories = set()
     if not timeseries_df.empty:
-        categories.update(timeseries_df["category_hint"].dropna().unique())
+        cat_col = "category" if "category" in timeseries_df.columns else "category_hint"
+        categories.update(timeseries_df[cat_col].dropna().unique())
     if not related_df.empty:
-        categories.update(related_df["category_hint"].dropna().unique())
+        cat_col = "category" if "category" in related_df.columns else "category_hint"
+        categories.update(related_df[cat_col].dropna().unique())
     for category in categories:
         if category == "other":
             continue
-        ts = timeseries_df[timeseries_df["category_hint"] == category] if not timeseries_df.empty else pd.DataFrame()
-        rq = related_df[related_df["category_hint"] == category] if not related_df.empty else pd.DataFrame()
+        ts_col = "category" if "category" in timeseries_df.columns else "category_hint"
+        rq_col = "category" if "category" in related_df.columns else "category_hint"
+        ts = timeseries_df[timeseries_df[ts_col] == category] if not timeseries_df.empty else pd.DataFrame()
+        rq = related_df[related_df[rq_col] == category] if not related_df.empty else pd.DataFrame()
+        growth_col = "growth_recent_pct" if "growth_recent_pct" in ts.columns else "growth_pct"
+        rising_col = "is_rising"
+        keyword_col = "keyword" if "keyword" in ts.columns else None
+        related_col = "related_keyword" if "related_keyword" in rq.columns else "keyword"
+        top_keywords = []
+        if keyword_col and not ts.empty:
+            top_keywords.extend(ts.sort_values(growth_col, ascending=False)[keyword_col].astype(str).head(3).tolist())
+        if not rq.empty and related_col in rq.columns:
+            top_keywords.extend(rq[related_col].astype(str).head(3).tolist())
         rows.append(
             {
-                "category_hint": category,
+                "category": category,
                 "trend_score": round(
-                    (ts["growth_pct"].clip(lower=0).sum() if not ts.empty else 0)
+                    (ts[growth_col].clip(lower=0).sum() if not ts.empty else 0)
                     + (len(rq) * 5 if not rq.empty else 0)
                     + (rq["is_breakout"].sum() * 20 if not rq.empty else 0),
                     2,
                 ),
                 "keyword_count": int(len(ts) + len(rq)),
-                "rising_keyword_count": int(ts["is_rising"].sum()) if not ts.empty else 0,
-                "breakout_count": int(rq["is_breakout"].sum()) if not rq.empty else 0,
+                "rising_keywords": int(ts[rising_col].sum()) if not ts.empty else 0,
+                "top_keywords": ", ".join(list(dict.fromkeys(top_keywords))[:5]),
             }
         )
     return pd.DataFrame(rows).sort_values("trend_score", ascending=False) if rows else pd.DataFrame()

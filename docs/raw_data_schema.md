@@ -66,3 +66,15 @@ engagement, twitter_context, layer, query, url
 - Early warning: `gtrends_rising.is_breakout = True`
 - Sentiment: Reddit `full_text` and Twitter `text`
 - Cross-platform validation: overlap between Reddit keywords, Google rising queries, and Twitter queries/hashtags
+
+## Dashboard Mention Table
+
+`data/raw/trend_mentions_raw.csv`
+
+```text
+mention_id, source, platform, source_type, keyword, query, category,
+title, text, full_text, author, community, published_at, collected_at,
+url, engagement_score, metrics_json
+```
+
+This is the dashboard-ready raw layer. Every row is one concrete mention of a product/trend keyword from a public source. The `title`, `text`, and `full_text` fields are the direct NLP inputs for topic extraction, sentiment, pain points, and trend evidence views.

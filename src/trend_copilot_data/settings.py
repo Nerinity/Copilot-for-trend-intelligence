@@ -5,6 +5,14 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover
+    load_dotenv = None
+
+if load_dotenv:
+    load_dotenv()
+
 
 @dataclass(frozen=True)
 class Settings:

@@ -124,6 +124,10 @@ Outputs:
 
 Stage 1 writes source-native raw CSV files first, because these are the easiest inputs for NLP, sentiment, trend velocity, and cross-platform validation.
 
+Dashboard mention layer:
+
+- `data/raw/trend_mentions_raw.csv`
+
 Reddit:
 
 - `data/raw/reddit_culture_trends.csv`

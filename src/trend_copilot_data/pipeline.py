@@ -28,6 +28,7 @@ def _save_frames(frames: dict[str, pd.DataFrame], data_dir: Path, run_id: str) -
         "twitter_trending": ["topic", "fetched_at"],
         "twitter_culture_posts": ["tweet_id"],
         "twitter_product_posts": ["tweet_id"],
+        "trend_mentions_raw": ["mention_id"],
     }
     for name, df in frames.items():
         if name.startswith("_"):
@@ -72,9 +73,14 @@ def run_collection(
 
     selected = set(sources)
     if "all" in selected:
-        selected = {"reddit", "twitter", "google_trends", "public_sources"}
+        selected = {"mentions", "reddit", "twitter", "google_trends", "public_sources"}
 
     frames: dict[str, pd.DataFrame] = {}
+
+    if "mentions" in selected:
+        from .sources import mentions
+
+        frames.update(mentions.collect(config, settings, start_date, end_date, taxonomy_terms=taxonomy_terms))
 
     if "reddit" in selected:
         from .sources import reddit
@@ -111,7 +117,7 @@ def run_collection(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run Stage 1 trend data collection.")
-    parser.add_argument("--sources", default="all", help="Comma list: reddit,twitter,google_trends,public_sources,all")
+    parser.add_argument("--sources", default="all", help="Comma list: mentions,reddit,twitter,google_trends,public_sources,all")
     parser.add_argument("--start-date", default=None, help="YYYY-MM-DD. Default from .env/settings.")
     parser.add_argument("--end-date", default=None, help="YYYY-MM-DD. Default from .env/settings.")
     parser.add_argument("--mode", choices=["init", "incremental"], default="incremental")

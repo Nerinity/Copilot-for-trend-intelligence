@@ -2,6 +2,16 @@
   "taxonomy": {
     "product_category_theme_csv": "configs/taxonomy/product_taxonomy_clean.csv"
   },
+  "dashboard_mentions": {
+    "max_queries": 120,
+    "taxonomy_query_limit": 80,
+    "google_news_enabled": true,
+    "google_news_per_query": 50,
+    "gdelt_enabled": false,
+    "gdelt_per_query": 60,
+    "hackernews_enabled": true,
+    "hackernews_per_query": 40
+  },
   "reddit": {
     "posts_per_subreddit": 45,
     "comments_per_post": 5,

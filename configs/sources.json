@@ -1,0 +1,196 @@
+{
+  "taxonomy": {
+    "product_category_theme_csv": "configs/taxonomy/product_taxonomy_clean.csv"
+  },
+  "reddit": {
+    "posts_per_subreddit": 45,
+    "comments_per_post": 5,
+    "search_results_per_query": 40,
+    "sorts": ["hot", "new", "top"],
+    "search_queries": [
+      "\"TikTok made me buy it\"",
+      "\"viral product\" \"worth it\"",
+      "\"Amazon finds\" \"review\"",
+      "\"TikTok Shop\" \"review\"",
+      "\"dupe\" \"worth it\"",
+      "\"new routine\" \"product\"",
+      "\"obsessed with\" \"product\"",
+      "\"changed my life\" \"product\"",
+      "\"holy grail\" skincare",
+      "\"underconsumption core\"",
+      "\"dopamine decor\"",
+      "\"protein coffee\"",
+      "\"ice roller\"",
+      "\"red light therapy\"",
+      "\"walking pad\"",
+      "\"mini printer\"",
+      "\"hydration packets\"",
+      "\"collagen peptides\"",
+      "\"matcha\" \"routine\"",
+      "\"quiet luxury\""
+    ],
+    "subreddit_categories": {
+      "beauty_skincare_hair": [
+        "beauty", "SkincareAddiction", "30PlusSkinCare", "AsianBeauty", "scacjdiscussion",
+        "tretinoin", "acne", "MakeupAddiction", "drugstoreMUA", "Makeup", "Sephora",
+        "Ulta", "HaircareScience", "curlyhair", "Naturalhair", "fragrance", "FemFragLab",
+        "RedditLaqueristas", "Nails"
+      ],
+      "health_wellness_supplements": [
+        "Biohackers", "Supplements", "Nootropics", "longevity", "HubermanLab", "nutrition",
+        "EatCheapAndHealthy", "guthealth", "Microbiome", "PlantBasedDiet", "VeganFitness",
+        "intermittentfasting", "sleep", "meditation", "selfimprovement", "productivity",
+        "Anxiety", "Menopause", "xxketo", "ketorecipes"
+      ],
+      "fitness_sports_recovery": [
+        "Fitness", "xxfitness", "running", "yoga", "pilates", "bodyweightfitness",
+        "homegym", "WeightTraining", "loseit", "1200isplenty", "cycling", "pickleball",
+        "climbing", "orangetheory", "Strava", "Garmin", "CrossFit"
+      ],
+      "food_beverage_kitchen": [
+        "Cooking", "AskCulinary", "MealPrepSunday", "foodhacks", "Coffee", "espresso",
+        "tea", "cocktails", "Mocktails", "fermentation", "airfryer", "CannedSardines",
+        "Costco", "traderjoes", "aldi", "KitchenConfidential", "Baking", "sousvide"
+      ],
+      "fashion_apparel_accessories": [
+        "femalefashionadvice", "malefashionadvice", "streetwear", "fashion", "findfashion",
+        "frugalmalefashion", "FrugalFemaleFashion", "handbags", "Sneakers", "lululemon",
+        "capsulewardrobe", "ThriftStoreHauls", "weddingdress", "PlusSizeFashion",
+        "PetiteFashionAdvice", "Watches", "jewelry", "OUTFITS", "NavyBlazer"
+      ],
+      "home_living_decor_cleaning": [
+        "malelivingspace", "femalelivingspace", "HomeDecorating", "InteriorDesign",
+        "DesignMyRoom", "CozyPlaces", "organization", "declutter", "CleaningTips",
+        "HomeImprovement", "IKEA", "houseplants", "IndoorGarden", "Bedding", "candles",
+        "BuyItForLife", "Apartmentliving", "homestead"
+      ],
+      "tech_gadgets_creator_tools": [
+        "gadgets", "technology", "apple", "iphone", "Android", "headphones",
+        "BudgetAudiophile", "keyboards", "MechanicalKeyboards", "buildapc", "SmartHome",
+        "HomeKit", "drones", "cameras", "photography", "videography", "3Dprinting",
+        "onebag"
+      ],
+      "parenting_baby_family": [
+        "Parenting", "Mommit", "daddit", "toddlers", "BabyBumps", "beyondthebump",
+        "NewParents", "babywearing", "clothdiaps", "workingmoms", "SAHP", "Montessori"
+      ],
+      "pets": [
+        "dogs", "cats", "puppy101", "Dogtraining", "catcare", "CatAdvice", "pets",
+        "Aquariums", "reptiles", "doggrooming"
+      ],
+      "outdoor_travel_auto": [
+        "CampingGear", "camping", "hiking", "Ultralight", "onebag", "travel", "roadtrip",
+        "cars", "AutoDetailing", "carcamping", "overlanding", "VanLife", "solotravel",
+        "ManyBaggers"
+      ],
+      "gaming_toys_collectibles": [
+        "gaming", "NintendoSwitch", "SteamDeck", "boardgames", "toys", "lego",
+        "ActionFigures", "plushies", "PokemonTCG", "collectables", "3DS", "SBCGaming"
+      ],
+      "creator_commerce_social": [
+        "TikTokShop", "Tiktokhelp", "TikTok", "socialmedia", "ContentCreators",
+        "PartneredYoutube", "NewTubers", "youtube", "Instagram", "AffiliateMarketing",
+        "ecommerce", "EntrepreneurRideAlong", "EtsySellers", "smallbusiness", "shopify",
+        "AmazonSeller", "FulfillmentByAmazon", "Flipping"
+      ],
+      "deals_reviews_shopping": [
+        "ProductReviews", "Deals", "Frugal", "shutupandtakemymoney",
+        "DidntKnowIWantedThat", "GoodValue", "Costco", "Target", "Walmart",
+        "ThriftStoreHauls", "Anticonsumption", "ZeroWaste"
+      ],
+      "trend_culture": [
+        "popculturechat", "Fauxmoi", "OutOfTheLoop", "internetisbeautiful", "GenZ",
+        "Millennials", "AskWomenOver30", "AskMenOver30", "CasualConversation",
+        "NoStupidQuestions", "changemyview"
+      ],
+      "ai_startups_digital_products": [
+        "ChatGPT", "ArtificialInteligence", "LocalLLaMA", "SaaS", "startups",
+        "ProductManagement", "Entrepreneur", "SideProject", "indiehackers",
+        "Artificial", "MachineLearning"
+      ]
+    }
+  },
+  "twitter": {
+    "max_queries": 120,
+    "taxonomy_query_limit": 80,
+    "max_results_per_query": 60,
+    "seed_queries": [
+      "#TikTokMadeMeBuyIt",
+      "#TikTokShop review",
+      "\"TikTok Shop\" \"worth it\"",
+      "\"Amazon finds\"",
+      "\"viral product\"",
+      "\"honest review\" \"product\"",
+      "\"GRWM\" \"product\"",
+      "\"dupe\" \"worth it\"",
+      "\"obsessed with this\"",
+      "\"product changed my life\"",
+      "\"restock\" \"sold out\"",
+      "\"new launch\" skincare",
+      "\"protein coffee\"",
+      "\"ice roller\"",
+      "\"red light therapy\"",
+      "\"walking pad\"",
+      "\"matcha routine\"",
+      "\"underconsumption core\"",
+      "\"quiet luxury\"",
+      "\"dopamine decor\""
+    ],
+    "category_keywords": {
+      "beauty_skincare": ["skincare", "sunscreen", "lip oil", "hair growth", "red light therapy", "ice roller", "K beauty"],
+      "health_wellness": ["protein coffee", "creatine gummies", "magnesium glycinate", "hydration packets", "gut health", "sleep routine"],
+      "food_beverage": ["matcha", "functional soda", "protein snack", "mocktail", "air fryer", "high protein"],
+      "fashion": ["linen set", "ballet flats", "quiet luxury", "capsule wardrobe", "summer dress", "work tote"],
+      "home_living": ["dopamine decor", "cleaning hack", "walking pad", "portable blender", "mini fridge", "organization"],
+      "tech_gadgets": ["portable projector", "mini printer", "AI wearable", "smart ring", "travel charger", "creator light"],
+      "pets": ["dog enrichment", "cat water fountain", "pet camera", "slow feeder"],
+      "creator_commerce": ["TikTok shop", "affiliate", "creator storefront", "live shopping", "commission"]
+    }
+  },
+  "google_trends": {
+    "geo": "US",
+    "max_keywords": 180,
+    "batch_size": 1,
+    "rising_threshold_pct": 20,
+    "request_delay_seconds": 3,
+    "category_keywords": {
+      "beauty_skincare": ["sunscreen", "lip oil", "K beauty", "red light therapy", "ice roller", "scalp serum", "tinted moisturizer", "pimple patch"],
+      "health_wellness": ["protein coffee", "creatine gummies", "magnesium glycinate", "hydration packets", "gut health", "sleep mask", "collagen peptides", "electrolyte powder"],
+      "food_beverage": ["matcha", "functional soda", "protein snack", "mocktail", "air fryer recipes", "cottage cheese recipes", "high protein breakfast", "cold foam"],
+      "fashion_apparel": ["linen pants", "ballet flats", "quiet luxury", "capsule wardrobe", "summer dress", "work tote", "mesh flats", "jorts"],
+      "home_living": ["dopamine decor", "walking pad", "portable blender", "home organization", "robot vacuum", "portable AC", "sunset lamp", "cleaning paste"],
+      "tech_gadgets": ["portable projector", "mini printer", "smart ring", "AI wearable", "travel charger", "vlogging camera", "wireless mic", "e ink tablet"],
+      "baby_parenting": ["baby carrier", "travel stroller", "sensory toys", "Montessori toys", "diaper bag", "sound machine"],
+      "pets": ["cat water fountain", "dog enrichment toys", "slow feeder", "pet camera", "automatic litter box", "dog supplements"],
+      "outdoor_travel": ["carry on backpack", "packing cubes", "camping fan", "cooling towel", "pickleball paddle", "portable espresso"],
+      "creator_commerce": ["TikTok Shop", "affiliate marketing", "live shopping", "creator storefront", "Amazon storefront", "UGC creator"]
+    }
+  },
+  "public_sources": {
+    "hackernews": {
+      "enabled": true,
+      "hits_per_query": 50,
+      "queries": [
+        "AI wearable", "consumer AI", "TikTok Shop", "creator economy", "social commerce",
+        "ecommerce", "personalized shopping", "recommendation engine", "smart ring",
+        "health tracking", "product hunt", "startup", "marketplace"
+      ]
+    },
+    "rss": {
+      "enabled": true,
+      "items_per_query": 25,
+      "google_news_queries": [
+        "viral TikTok product 2026",
+        "TikTok Shop trend 2026",
+        "Amazon viral products 2026",
+        "beauty product trend 2026",
+        "wellness product trend 2026",
+        "creator commerce trend 2026",
+        "social commerce trend 2026",
+        "emerging consumer trend 2026",
+        "Pinterest trends products 2026",
+        "YouTube shopping trend 2026"
+      ]
+    }
+  }
+}

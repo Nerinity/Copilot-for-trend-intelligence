@@ -23,3 +23,5 @@ outputs/*/
 !data/snapshots/.gitkeep
 !data/state/.gitkeep
 !outputs/.gitkeep
+data/processed/*.npy
+data/processed/*.parquet

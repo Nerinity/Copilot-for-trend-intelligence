@@ -127,7 +127,21 @@ def _safe_log_engagement(value: Any) -> float:
     return min(1.0, math.log1p(number) / math.log1p(10000))
 
 
-def score_mentions(df: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
+def score_mentions(
+    df: pd.DataFrame,
+    config: dict[str, Any],
+    product_pipeline: "dict[str, Any] | None" = None,
+) -> pd.DataFrame:
+    """
+    Score mentions for relevance.
+
+    When product_pipeline is provided (built by product_nlp.build_product_nlp_pipeline),
+    the embedding space is driven by the product pool TF-IDF instead of the generic
+    HashingVectorizer on hardcoded business-context texts.  The business-context label
+    assignment still uses the context list so existing downstream columns are preserved.
+
+    product_pipeline keys: entities, vectorizer, product_corpus
+    """
     if df.empty:
         for column in [
             "semantic_relevance_score",
@@ -141,33 +155,71 @@ def score_mentions(df: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
 
     semantic_cfg = load_semantic_config(config)
     contexts = load_business_contexts(config)
-    vectorizer = HashingVectorizer(
-        n_features=2**18,
-        alternate_sign=False,
-        norm="l2",
-        ngram_range=(1, 2),
-        lowercase=True,
-    )
 
     texts = (
         df.get("full_text", pd.Series([""] * len(df))).fillna("").astype(str).map(clean_text).tolist()
     )
-    context_texts = [clean_text(item["text"]) for item in contexts]
-    text_matrix = vectorizer.transform(texts)
-    context_matrix = vectorizer.transform(context_texts)
-    similarity = text_matrix @ context_matrix.T
 
-    labels = []
-    semantic_scores = []
-    for row_idx in range(similarity.shape[0]):
-        row = similarity.getrow(row_idx)
-        if row.nnz == 0:
-            labels.append("")
-            semantic_scores.append(0.0)
-            continue
-        best_pos = int(row.indices[row.data.argmax()])
-        labels.append(contexts[best_pos]["label"])
-        semantic_scores.append(float(row.data.max()))
+    # ── Embedding: product-pool TF-IDF when available, else HashingVectorizer ──
+    if product_pipeline and product_pipeline.get("vectorizer") is not None:
+        from .product_nlp import score_texts_against_product_corpus, tokenize_to_str
+
+        tfidf_vec = product_pipeline["vectorizer"]
+        corpus = product_pipeline.get("product_corpus", [])
+        token_strs = [tokenize_to_str(t) for t in texts]
+
+        # Product-pool cosine scores (used as primary semantic signal)
+        product_scores = score_texts_against_product_corpus(token_strs, tfidf_vec, corpus)
+
+        # Business-context label: still assign using HashingVectorizer for backward compat
+        hv = HashingVectorizer(n_features=2**18, alternate_sign=False, norm="l2",
+                               ngram_range=(1, 2), lowercase=True)
+        text_matrix = hv.transform(texts)
+        context_matrix = hv.transform([clean_text(c["text"]) for c in contexts])
+        similarity = text_matrix @ context_matrix.T
+
+        labels = []
+        context_scores = []
+        for row_idx in range(similarity.shape[0]):
+            row = similarity.getrow(row_idx)
+            if row.nnz == 0:
+                labels.append("")
+                context_scores.append(0.0)
+                continue
+            best_pos = int(row.indices[row.data.argmax()])
+            labels.append(contexts[best_pos]["label"])
+            context_scores.append(float(row.data.max()))
+
+        # Blend product-pool score (0.7) with generic context score (0.3)
+        semantic_scores = [
+            round(0.7 * ps + 0.3 * cs, 6)
+            for ps, cs in zip(product_scores, context_scores)
+        ]
+    else:
+        # Fallback: original HashingVectorizer on business-context texts
+        vectorizer = HashingVectorizer(
+            n_features=2**18,
+            alternate_sign=False,
+            norm="l2",
+            ngram_range=(1, 2),
+            lowercase=True,
+        )
+        context_texts = [clean_text(item["text"]) for item in contexts]
+        text_matrix = vectorizer.transform(texts)
+        context_matrix = vectorizer.transform(context_texts)
+        similarity = text_matrix @ context_matrix.T
+
+        labels = []
+        semantic_scores = []
+        for row_idx in range(similarity.shape[0]):
+            row = similarity.getrow(row_idx)
+            if row.nnz == 0:
+                labels.append("")
+                semantic_scores.append(0.0)
+                continue
+            best_pos = int(row.indices[row.data.argmax()])
+            labels.append(contexts[best_pos]["label"])
+            semantic_scores.append(float(row.data.max()))
 
     out = df.copy()
     out["semantic_relevance_score"] = semantic_scores

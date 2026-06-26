@@ -20,6 +20,10 @@ VIDEO_POOL_DEFAULT = (
 AFFILIATE_RULES_DEFAULT = (
     "/Users/bytedance/Downloads/#1.1 Product Pool for Affiliate Creator_Internal - Read Me.csv"
 )
+AFFILIATE_POOL_DEFAULT = (
+    "/Users/bytedance/Downloads/"
+    "#1.1 Product Pool for Affiliate Creator_Internal - Week72(0622-0628).csv"
+)
 LIVE_POOL_DEFAULT = "/Users/bytedance/Desktop/直播货盘格式0527-2026-06-25 15-36-38.xlsx"
 
 
@@ -296,6 +300,8 @@ def normalize_product_rows(frames: list[pd.DataFrame]) -> pd.DataFrame:
             trend_labels = sorted(set(_match_lexicon(context, TREND_LEXICON) + explicit_trends[:8]))
             if row.get("source_type") == "video_product_pool":
                 trend_labels.append("video_creator_pool")
+            if row.get("source_type") == "affiliate_product_pool":
+                trend_labels.append("affiliate_creator_pool")
             if row.get("source_type") == "live_product_pool":
                 vibe_labels.append("live_commerce_ready")
                 trend_labels.append("live_selling_product")
@@ -469,13 +475,15 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def run(
     video_pool: str = VIDEO_POOL_DEFAULT,
+    affiliate_pool: str = AFFILIATE_POOL_DEFAULT,
     affiliate_rules: str = AFFILIATE_RULES_DEFAULT,
     live_pool: str = LIVE_POOL_DEFAULT,
     output_dir: str = "outputs/vibe_trend_training",
-    max_qa_products: int = 2500,
+    max_qa_products: int = 5000,
 ) -> dict[str, Path]:
     specs = [
         SourceSpec(Path(video_pool), "video_spm_key_product_pool_week69", "video_product_pool"),
+        SourceSpec(Path(affiliate_pool), "affiliate_creator_product_pool_week72", "affiliate_product_pool"),
         SourceSpec(Path(live_pool), "live_product_pool_0527", "live_product_pool"),
     ]
     frames = [_read_table(spec) for spec in specs if spec.path.exists()]
@@ -505,13 +513,15 @@ def run(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build product vibe/trend profiles and Q&A JSONL.")
     parser.add_argument("--video-pool", default=VIDEO_POOL_DEFAULT)
+    parser.add_argument("--affiliate-pool", default=AFFILIATE_POOL_DEFAULT)
     parser.add_argument("--affiliate-rules", default=AFFILIATE_RULES_DEFAULT)
     parser.add_argument("--live-pool", default=LIVE_POOL_DEFAULT)
     parser.add_argument("--output-dir", default="outputs/vibe_trend_training")
-    parser.add_argument("--max-qa-products", type=int, default=2500)
+    parser.add_argument("--max-qa-products", type=int, default=5000)
     args = parser.parse_args()
     outputs = run(
         video_pool=args.video_pool,
+        affiliate_pool=args.affiliate_pool,
         affiliate_rules=args.affiliate_rules,
         live_pool=args.live_pool,
         output_dir=args.output_dir,

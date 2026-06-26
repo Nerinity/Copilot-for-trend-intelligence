@@ -7,6 +7,7 @@ It does not call an external LLM. It uses deterministic NLP/rule extraction firs
 ## Inputs
 
 - Video SPM key product pool CSV
+- Affiliate creator product pool CSV
 - Affiliate creator product pool rule/readme CSV
 - Live product pool XLSX
 
@@ -90,4 +91,3 @@ If the system Python does not have `openpyxl`, install project dependencies firs
 ```bash
 python3 -m pip install -e .
 ```
-
